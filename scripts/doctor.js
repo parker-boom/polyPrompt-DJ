@@ -28,6 +28,7 @@ function checkEnv() {
   const required = [
     "APPLE_TEAM_ID",
     "APPLE_KEY_ID",
+    "APPLE_MEDIA_ID",
     "APPLE_MUSICKIT_KEY_PATH",
     "DISCORD_BOT_TOKEN",
     "DISCORD_GUILD_ID",
