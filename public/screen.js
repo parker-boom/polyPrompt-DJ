@@ -257,6 +257,11 @@
   async function playPause() {
     if (!state.music) return;
     const player = state.music.player;
+    const queueItems = player.queue?.items || [];
+    if (!player.nowPlayingItem && queueItems.length === 0) {
+      showToast("Queue is empty. Ask Tempo to play something first.", "accent");
+      return;
+    }
     try {
       if (isPlaying()) {
         await player.pause();
@@ -302,9 +307,10 @@
     const song = results[0];
     const player = state.music.player;
     const descriptor = { song: song.id };
+    const shouldStartFresh = !player.nowPlayingItem || !isPlaying();
 
     try {
-      if (!player.nowPlayingItem) {
+      if (shouldStartFresh) {
         await state.music.setQueue({ song: song.id, startPlaying: true });
       } else if (player.queue?.prepend) {
         await player.queue.prepend(descriptor);
