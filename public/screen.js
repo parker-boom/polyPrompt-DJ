@@ -7,6 +7,8 @@
     lastStatus: null
   };
 
+  const AUTH_STORAGE_KEY = "promptdj_music_user_token";
+
   const el = {
     djName: document.getElementById("djName"),
     djTag: document.getElementById("djTag"),
@@ -27,6 +29,23 @@
   };
 
   const socket = io();
+
+  function readSavedToken() {
+    try {
+      return localStorage.getItem(AUTH_STORAGE_KEY);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function saveToken(token) {
+    if (!token) return;
+    try {
+      localStorage.setItem(AUTH_STORAGE_KEY, token);
+    } catch (err) {
+      // Ignore storage errors.
+    }
+  }
 
   function setSocketStatus(text, ok) {
     el.socketStatus.textContent = `Socket: ${text}`;
@@ -168,10 +187,17 @@
       const data = await res.json();
       if (!data.token) throw new Error(data.error || "No token returned");
 
-      MusicKit.configure({
+      const savedToken = readSavedToken();
+      const config = {
         developerToken: data.token,
         app: { name: "PromptDJ", build: "0.1" }
-      });
+      };
+      if (savedToken) {
+        config.userToken = savedToken;
+        config.musicUserToken = savedToken;
+      }
+
+      MusicKit.configure(config);
 
       state.music = MusicKit.getInstance();
       state.authorized = state.music.isAuthorized;
@@ -197,7 +223,8 @@
   async function authorize() {
     if (!state.music) return;
     try {
-      await state.music.authorize();
+      const userToken = await state.music.authorize();
+      saveToken(userToken);
       state.authorized = true;
       setAuthStatus("Authorized", true);
       updateAuthUI();
@@ -237,7 +264,7 @@
     try {
       await player.play();
     } catch (err) {
-      // ignore play errors
+      showToast("Playback blocked. Tap the screen once, then click Refresh Status.", "accent");
     }
 
     pushStatus();
@@ -321,7 +348,16 @@
   });
 
   el.authorizeBtn.addEventListener("click", authorize);
-  el.refreshBtn.addEventListener("click", () => pushStatus());
+  el.refreshBtn.addEventListener("click", async () => {
+    if (state.music?.isAuthorized) {
+      try {
+        await state.music.player.play();
+      } catch (err) {
+        showToast("Playback blocked. Tap the screen once, then try again.", "accent");
+      }
+    }
+    pushStatus();
+  });
 
   setSocketStatus("Connecting", false);
   setAuthStatus("Loading", false);
@@ -335,4 +371,3 @@
     if (state.music) pushStatus();
   }, 5000);
 })();
-
