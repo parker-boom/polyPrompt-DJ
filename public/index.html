@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>PromptDJ MusicKit Sandbox</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Apple-hosted MusicKit JS -->
+    <script src="https://js-cdn.music.apple.com/musickit/v1/musickit.js"></script> <!-- :contentReference[oaicite:2]{index=2} -->
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; padding: 16px; }
+      button { padding: 10px 12px; margin-right: 8px; }
+      #log { white-space: pre-wrap; margin-top: 12px; }
+      .ok { color: #0a7; }
+      .bad { color: #c22; }
+    </style>
+  </head>
+  <body>
+    <h2>PromptDJ MusicKit Sandbox</h2>
+    <div>
+      <button id="btnInit" disabled>Init MusicKit</button>
+      <button id="btnAuth" disabled>Sign in / Authorize</button>
+      <button id="btnTest" disabled>Test search (“Daft Punk”)</button>
+    </div>
+    <div id="status"></div>
+    <div id="log"></div>
+
+    <script>
+      const $status = document.getElementById("status");
+      const $log = document.getElementById("log");
+      const btnInit = document.getElementById("btnInit");
+      const btnAuth = document.getElementById("btnAuth");
+      const btnTest = document.getElementById("btnTest");
+
+      function log(msg, cls) {
+        const line = document.createElement("div");
+        if (cls) line.className = cls;
+        line.textContent = msg;
+        $log.prepend(line);
+      }
+
+      document.addEventListener("musickitloaded", async () => {
+        log("MusicKit JS loaded.", "ok");
+        btnInit.disabled = false;
+      });
+
+      btnInit.onclick = async () => {
+        try {
+          const r = await fetch("/token");
+          const { token, error } = await r.json();
+          if (!token) throw new Error(error || "No token returned");
+
+          MusicKit.configure({
+            developerToken: token,
+            app: { name: "PromptDJ", build: "0.1" },
+            storefrontId: "us"
+          });
+
+          window.music = MusicKit.getInstance();
+          log("MusicKit configured.", "ok");
+          btnAuth.disabled = false;
+          btnTest.disabled = false;
+        } catch (e) {
+          log("Init failed: " + e.message, "bad");
+        }
+      };
+
+      btnAuth.onclick = async () => {
+        try {
+          // Prompts sign in + authorization for subscriber. :contentReference[oaicite:3]{index=3}
+          const userToken = await window.music.authorize();
+          log("Authorized. User token acquired (stored in MusicKit).", "ok");
+          $status.textContent = "✅ Authorized";
+        } catch (e) {
+          log("Authorize failed: " + e.message, "bad");
+        }
+      };
+
+      btnTest.onclick = async () => {
+        try {
+          // Catalog search via MusicKit API (sanity check). :contentReference[oaicite:4]{index=4}
+          const res = await window.music.api.search("Daft Punk", { types: "songs", limit: 5 });
+          const top = res?.songs?.data?.[0];
+          log("Search ok. Top song: " + (top ? `${top.attributes.name} — ${top.attributes.artistName}` : "none"), "ok");
+        } catch (e) {
+          log("Search failed: " + e.message, "bad");
+        }
+      };
+    </script>
+  </body>
+</html>
