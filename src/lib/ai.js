@@ -127,7 +127,10 @@ function createAiService({ personality, log }) {
   }
 
   async function generateChatReply({ message, context }) {
-    if (!client) return "(OpenAI not configured.)";
+    if (!client) {
+      log.warn("OpenAI not configured; chat replies disabled.");
+      return "";
+    }
 
     const prompt = [
       `You are ${personality.name}, a witty AI DJ in Discord.`,
