@@ -19,6 +19,7 @@
     playPauseBtn: document.getElementById("playPauseBtn"),
     nextBtn: document.getElementById("nextBtn"),
     prevBtn: document.getElementById("prevBtn"),
+    debugLine: document.getElementById("debugLine"),
     artwork: document.getElementById("artwork"),
     artPlaceholder: document.getElementById("artPlaceholder"),
     trackTitle: document.getElementById("trackTitle"),
@@ -70,6 +71,17 @@
     }
   }
 
+  function formatError(err) {
+    if (!err) return "Unknown error";
+    if (typeof err === "string") return err;
+    if (err.message) return err.message;
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return String(err);
+    }
+  }
+
   function showToast(message, tone) {
     const div = document.createElement("div");
     div.className = "toast";
@@ -107,9 +119,30 @@
     return player.playbackState === 2;
   }
 
+  function playbackStateLabel() {
+    if (!state.music) return "--";
+    const stateVal = state.music.player.playbackState;
+    const states = window.MusicKit?.PlaybackStates;
+    if (states) {
+      if (stateVal === states.playing) return "playing";
+      if (stateVal === states.paused) return "paused";
+      if (stateVal === states.stopped) return "stopped";
+      if (stateVal === states.loading) return "loading";
+      if (stateVal === states.seeking) return "seeking";
+    }
+    return String(stateVal ?? "--");
+  }
+
   function updatePlayPauseLabel() {
     if (!el.playPauseBtn) return;
     el.playPauseBtn.textContent = isPlaying() ? "Pause" : "Play";
+  }
+
+  function updateDebugLine() {
+    if (!el.debugLine) return;
+    const queueLength = state.music?.player?.queue?.items?.length || 0;
+    const authorized = state.music?.isAuthorized ? "yes" : "no";
+    el.debugLine.textContent = `Auth: ${authorized} | Playback: ${playbackStateLabel()} | Queue: ${queueLength}`;
   }
 
   function updateUI(status) {
@@ -144,6 +177,7 @@
     }
 
     updatePlayPauseLabel();
+    updateDebugLine();
   }
 
   function buildStatus() {
@@ -200,6 +234,26 @@
     }
   }
 
+  async function attemptPlay(contextLabel) {
+    if (!state.music?.isAuthorized) {
+      showToast("Authorize Apple Music first.", "accent");
+      return false;
+    }
+    try {
+      await state.music.player.play();
+    } catch (err) {
+      showToast(`Playback error (${contextLabel}): ${formatError(err)}`, "accent");
+      return false;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    if (!isPlaying()) {
+      showToast("Playback didn't start. Click the page once, then Play again.", "accent");
+      return false;
+    }
+    return true;
+  }
+
   async function initMusicKit() {
     try {
       const res = await fetch("/token");
@@ -250,7 +304,7 @@
       showToast("Authorized. Ready to spin.");
       pushStatus();
     } catch (err) {
-      showToast(`Authorize failed: ${err.message}`, "accent");
+      showToast(`Authorize failed: ${formatError(err)}`, "accent");
     }
   }
 
@@ -262,16 +316,20 @@
       showToast("Queue is empty. Ask Tempo to play something first.", "accent");
       return;
     }
-    try {
-      if (isPlaying()) {
+    if (isPlaying()) {
+      try {
         await player.pause();
-      } else {
-        await player.play();
+      } catch (err) {
+        showToast(`Pause error: ${formatError(err)}`, "accent");
       }
-    } catch (err) {
-      showToast(`Playback error: ${err.message}`, "accent");
+      pushStatus();
+      return;
     }
-    pushStatus();
+
+    const started = await attemptPlay("play");
+    if (started) {
+      pushStatus();
+    }
   }
 
   async function skipNext() {
@@ -279,7 +337,7 @@
     try {
       await state.music.player.skipToNextItem();
     } catch (err) {
-      showToast(`Next failed: ${err.message}`, "accent");
+      showToast(`Next failed: ${formatError(err)}`, "accent");
     }
     pushStatus();
   }
@@ -289,7 +347,7 @@
     try {
       await state.music.player.skipToPreviousItem();
     } catch (err) {
-      showToast(`Prev failed: ${err.message}`, "accent");
+      showToast(`Prev failed: ${formatError(err)}`, "accent");
     }
     pushStatus();
   }
@@ -323,10 +381,9 @@
       await state.music.setQueue({ song: song.id, startPlaying: true });
     }
 
-    try {
-      await player.play();
-    } catch (err) {
-      showToast("Playback blocked. Tap the screen once, then click Play.", "accent");
+    const started = await attemptPlay("queue");
+    if (!started) {
+      showToast("If Play does nothing, try the /sandbox page to confirm playback.", "accent");
     }
 
     pushStatus();
@@ -404,20 +461,14 @@
       socket.emit("screen:actionResult", {
         id,
         ok: false,
-        error: err.message || String(err)
+        error: formatError(err)
       });
     }
   });
 
   el.authorizeBtn.addEventListener("click", authorize);
   el.refreshBtn.addEventListener("click", async () => {
-    if (state.music?.isAuthorized) {
-      try {
-        await state.music.player.play();
-      } catch (err) {
-        showToast("Playback blocked. Tap the screen once, then try again.", "accent");
-      }
-    }
+    await attemptPlay("refresh");
     pushStatus();
   });
   el.playPauseBtn?.addEventListener("click", playPause);
