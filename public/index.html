@@ -1,90 +1,72 @@
-<!doctype html>
-<html>
+﻿<!doctype html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>PromptDJ MusicKit Sandbox</title>
+    <title>PromptDJ Screen</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- Apple-hosted MusicKit JS -->
-    <script src="https://js-cdn.music.apple.com/musickit/v1/musickit.js"></script> <!-- :contentReference[oaicite:2]{index=2} -->
-    <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; padding: 16px; }
-      button { padding: 10px 12px; margin-right: 8px; }
-      #log { white-space: pre-wrap; margin-top: 12px; }
-      .ok { color: #0a7; }
-      .bad { color: #c22; }
-    </style>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://js-cdn.music.apple.com/musickit/v1/musickit.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
   </head>
   <body>
-    <h2>PromptDJ MusicKit Sandbox</h2>
-    <div>
-      <button id="btnInit" disabled>Init MusicKit</button>
-      <button id="btnAuth" disabled>Sign in / Authorize</button>
-      <button id="btnTest" disabled>Test search (“Daft Punk”)</button>
-    </div>
-    <div id="status"></div>
-    <div id="log"></div>
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-orb orb-3"></div>
 
-    <script>
-      const $status = document.getElementById("status");
-      const $log = document.getElementById("log");
-      const btnInit = document.getElementById("btnInit");
-      const btnAuth = document.getElementById("btnAuth");
-      const btnTest = document.getElementById("btnTest");
+    <main class="screen">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand__name" id="djName">PromptDJ</div>
+          <div class="brand__tag" id="djTag">Live from your local channel.</div>
+        </div>
+        <div class="status">
+          <div class="pill" id="socketStatus">Socket: --</div>
+          <div class="pill" id="authStatus">Music: --</div>
+        </div>
+      </header>
 
-      function log(msg, cls) {
-        const line = document.createElement("div");
-        if (cls) line.className = cls;
-        line.textContent = msg;
-        $log.prepend(line);
-      }
+      <section class="hero">
+        <div class="art-wrap">
+          <img id="artwork" alt="Album art" src="" />
+          <div class="art-placeholder" id="artPlaceholder">
+            <div class="pulse"></div>
+            <div class="pulse"></div>
+            <div class="pulse"></div>
+          </div>
+        </div>
 
-      document.addEventListener("musickitloaded", async () => {
-        log("MusicKit JS loaded.", "ok");
-        btnInit.disabled = false;
-      });
+        <div class="meta">
+          <div class="vibe-row">
+            <span class="vibe-label">Vibe</span>
+            <span class="vibe-value" id="vibeName">--</span>
+          </div>
+          <h1 id="trackTitle">Waiting for a drop</h1>
+          <div class="artist" id="trackArtist">Connect Discord and queue a song.</div>
 
-      btnInit.onclick = async () => {
-        try {
-          const r = await fetch("/token");
-          const { token, error } = await r.json();
-          if (!token) throw new Error(error || "No token returned");
+          <div class="progress">
+            <div class="progress__bar"><span id="progressFill"></span></div>
+            <div class="progress__time">
+              <span id="timeCurrent">0:00</span>
+              <span id="timeTotal">0:00</span>
+            </div>
+          </div>
 
-          MusicKit.configure({
-            developerToken: token,
-            app: { name: "PromptDJ", build: "0.1" },
-            storefrontId: "us"
-          });
+          <div class="actions">
+            <button class="btn" id="authorizeBtn">Authorize Apple Music</button>
+            <button class="btn ghost" id="refreshBtn">Refresh Status</button>
+          </div>
+        </div>
+      </section>
 
-          window.music = MusicKit.getInstance();
-          log("MusicKit configured.", "ok");
-          btnAuth.disabled = false;
-          btnTest.disabled = false;
-        } catch (e) {
-          log("Init failed: " + e.message, "bad");
-        }
-      };
+      <section class="queue">
+        <div class="queue__title">Up Next</div>
+        <ul id="upNextList"></ul>
+      </section>
+    </main>
 
-      btnAuth.onclick = async () => {
-        try {
-          // Prompts sign in + authorization for subscriber. :contentReference[oaicite:3]{index=3}
-          const userToken = await window.music.authorize();
-          log("Authorized. User token acquired (stored in MusicKit).", "ok");
-          $status.textContent = "✅ Authorized";
-        } catch (e) {
-          log("Authorize failed: " + e.message, "bad");
-        }
-      };
+    <div class="toast-stack" id="toastStack"></div>
 
-      btnTest.onclick = async () => {
-        try {
-          // Catalog search via MusicKit API (sanity check). :contentReference[oaicite:4]{index=4}
-          const res = await window.music.api.search("Daft Punk", { types: "songs", limit: 5 });
-          const top = res?.songs?.data?.[0];
-          log("Search ok. Top song: " + (top ? `${top.attributes.name} — ${top.attributes.artistName}` : "none"), "ok");
-        } catch (e) {
-          log("Search failed: " + e.message, "bad");
-        }
-      };
-    </script>
+    <script src="/screen.js"></script>
   </body>
 </html>
+

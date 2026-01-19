@@ -1,0 +1,47 @@
+﻿{
+  "defaultVibe": "chill",
+  "quietAnnounceMs": 120000,
+  "rotation": {
+    "tracksPerVibe": 15,
+    "avoidLast": 3,
+    "requestStormWindowMs": 120000
+  },
+  "vibes": [
+    {
+      "id": "REPLACE_ME",
+      "name": "chill",
+      "aliases": ["chill", "downtempo", "laid back", "smooth"]
+    },
+    {
+      "id": "REPLACE_ME",
+      "name": "focus",
+      "aliases": ["focus", "study", "deep work", "concentration"]
+    },
+    {
+      "id": "REPLACE_ME",
+      "name": "hype",
+      "aliases": ["hype", "energy", "pump up", "turn up"]
+    },
+    {
+      "id": "REPLACE_ME",
+      "name": "sunset",
+      "aliases": ["sunset", "warm", "golden hour", "easy"]
+    },
+    {
+      "id": "REPLACE_ME",
+      "name": "no-lyrics",
+      "aliases": ["no lyrics", "instrumental", "beats", "lofi"]
+    },
+    {
+      "id": "REPLACE_ME",
+      "name": "party",
+      "aliases": ["party", "dance", "club", "late night"]
+    },
+    {
+      "id": "REPLACE_ME",
+      "name": "jazz-lounge",
+      "aliases": ["jazz", "lounge", "late", "classy"]
+    }
+  ]
+}
+
