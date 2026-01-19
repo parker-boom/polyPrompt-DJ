@@ -223,6 +223,14 @@ body {
   margin-top: 6px;
 }
 
+.controls {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .actions {
   margin-top: 16px;
   display: flex;
@@ -334,4 +342,3 @@ body {
     font-size: 22px;
   }
 }
-

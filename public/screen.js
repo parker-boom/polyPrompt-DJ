@@ -16,6 +16,9 @@
     authStatus: document.getElementById("authStatus"),
     authorizeBtn: document.getElementById("authorizeBtn"),
     refreshBtn: document.getElementById("refreshBtn"),
+    playPauseBtn: document.getElementById("playPauseBtn"),
+    nextBtn: document.getElementById("nextBtn"),
+    prevBtn: document.getElementById("prevBtn"),
     artwork: document.getElementById("artwork"),
     artPlaceholder: document.getElementById("artPlaceholder"),
     trackTitle: document.getElementById("trackTitle"),
@@ -95,6 +98,20 @@
     }
   }
 
+  function isPlaying() {
+    if (!state.music) return false;
+    const player = state.music.player;
+    if (typeof player.isPlaying === "boolean") return player.isPlaying;
+    const playing = window.MusicKit?.PlaybackStates?.playing;
+    if (playing !== undefined) return player.playbackState === playing;
+    return player.playbackState === 2;
+  }
+
+  function updatePlayPauseLabel() {
+    if (!el.playPauseBtn) return;
+    el.playPauseBtn.textContent = isPlaying() ? "Pause" : "Play";
+  }
+
   function updateUI(status) {
     const now = status?.nowPlaying;
     el.trackTitle.textContent = now?.title || "Waiting for a drop";
@@ -125,6 +142,8 @@
         el.upNextList.appendChild(li);
       });
     }
+
+    updatePlayPauseLabel();
   }
 
   function buildStatus() {
@@ -235,6 +254,41 @@
     }
   }
 
+  async function playPause() {
+    if (!state.music) return;
+    const player = state.music.player;
+    try {
+      if (isPlaying()) {
+        await player.pause();
+      } else {
+        await player.play();
+      }
+    } catch (err) {
+      showToast(`Playback error: ${err.message}`, "accent");
+    }
+    pushStatus();
+  }
+
+  async function skipNext() {
+    if (!state.music) return;
+    try {
+      await state.music.player.skipToNextItem();
+    } catch (err) {
+      showToast(`Next failed: ${err.message}`, "accent");
+    }
+    pushStatus();
+  }
+
+  async function skipPrev() {
+    if (!state.music) return;
+    try {
+      await state.music.player.skipToPreviousItem();
+    } catch (err) {
+      showToast(`Prev failed: ${err.message}`, "accent");
+    }
+    pushStatus();
+  }
+
   async function searchSong(query) {
     const res = await state.music.api.search(query, { types: "songs", limit: 5 });
     return res?.songs?.data || [];
@@ -250,21 +304,23 @@
     const descriptor = { song: song.id };
 
     try {
-      if (player.queue?.prepend) {
+      if (!player.nowPlayingItem) {
+        await state.music.setQueue({ song: song.id, startPlaying: true });
+      } else if (player.queue?.prepend) {
         await player.queue.prepend(descriptor);
       } else if (player.queue?.append) {
         await player.queue.append(descriptor);
       } else {
-        await state.music.setQueue(descriptor);
+        await state.music.setQueue({ song: song.id, startPlaying: true });
       }
     } catch (err) {
-      await state.music.setQueue(descriptor);
+      await state.music.setQueue({ song: song.id, startPlaying: true });
     }
 
     try {
       await player.play();
     } catch (err) {
-      showToast("Playback blocked. Tap the screen once, then click Refresh Status.", "accent");
+      showToast("Playback blocked. Tap the screen once, then click Play.", "accent");
     }
 
     pushStatus();
@@ -358,6 +414,9 @@
     }
     pushStatus();
   });
+  el.playPauseBtn?.addEventListener("click", playPause);
+  el.nextBtn?.addEventListener("click", skipNext);
+  el.prevBtn?.addEventListener("click", skipPrev);
 
   setSocketStatus("Connecting", false);
   setAuthStatus("Loading", false);
